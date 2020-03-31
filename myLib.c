@@ -6,7 +6,7 @@ unsigned short *videoBuffer = (unsigned short *)0x6000000;
 // The start of DMA registers
 DMA *dma = (DMA *)0x40000B0;
 
-// The shadowOAM
+// Define shadowOAM
 OBJ_ATTR shadowOAM[128];
 
 // Set a pixel on the screen in Mode 3
