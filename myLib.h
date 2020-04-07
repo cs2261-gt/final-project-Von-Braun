@@ -5,17 +5,26 @@
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
+typedef char s8;
 typedef short s16;
 typedef int s32;
+typedef volatile u8  vu8;
+typedef volatile u16 vu16;
+typedef volatile u32 vu32;
+typedef volatile s8  vs8;
+typedef volatile s16 vs16;
+typedef volatile s32 vs32;
 
 // Common Macros
 #define OFFSET(col,row,rowlen) ((row)*(rowlen)+(col))
+#define ALIGN4		__attribute__((aligned(4)))
 
 // ================================= DISPLAY ==================================
 
 // Display Control Register
 #define REG_DISPCTL (*(unsigned short *)0x4000000)
 #define MODE0 0
+#define MODE1 1
 #define MODE3 3
 #define MODE4 4
 #define DCNT_BLANK      (1<<7)
@@ -51,6 +60,23 @@ typedef u16 BG_tile[16];
 #define BG_SIZE_WIDE        (1<<14)  // 64x32 tiles
 #define BG_SIZE_TALL        (2<<14)  // 32x64 tiles
 #define BG_SIZE_LARGE       (3<<14)  // 64x64 tiles
+
+typedef struct BG_AFFINE {
+    s16 pa, pb;
+    s16 pc, pd;
+    s32 dx, dy
+} ALIGN4 BG_AFFINE;
+
+//! BG affine params array
+#define REG_BG_AFFINE       ((BG_AFFINE*)(0x04000000+0x0000))
+#define BG_WRAP		    	0x2000	//!< Wrap around edges of affine bgs
+#define BG_AFF_32x32	    0x4000	 // affine bg, 32x32 (256x256 px)
+#define REG_BG2PA			*(vs16*)(0x04000000+0x0020)	//!< Bg2 matrix.pa
+#define REG_BG2PB			*(vs16*)(0x04000000+0x0022)	//!< Bg2 matrix.pb
+#define REG_BG2PC			*(vs16*)(0x04000000+0x0024)	//!< Bg2 matrix.pc
+#define REG_BG2PD			*(vs16*)(0x04000000+0x0026)	//!< Bg2 matrix.pd
+#define REG_BG2X			*(vs32*)(0x04000000+0x0028)	//!< Bg2 x scroll
+#define REG_BG2Y			*(vs32*)(0x04000000+0x002C)	//!< Bg2 y scroll
 
 // Background Offset Registers
 #define REG_BG0HOFF (*(volatile unsigned short *)0x04000010)
@@ -131,9 +157,27 @@ void drawFullscreenImage4(const unsigned short *image);
 // Miscellaneous Drawing Functions
 void waitForVBlank();
 void flipPage();
+void overwrite_BG_tile(u32 spritesheet_index, u32 BG0_index, u32 sprite_start_line, u32 BG0_start_line, u32 lines_to_copy);
 
+// ================================== PLAYER SHIP ==============================================================
+typedef struct OBJ_SHIP {
+    char height;
+    short horizontal_speed;
+    short vertical_speed;
+    short heading;
+    char docking_type; //0 = none, 1 = station, 2 = motheship
+} OBJ_SHIP;
+
+// ================================= INTERUPTS ==================================
+// Define fnptr as a pointer to a function returning void, which takes no arguments
+typedef void (*fnptr)(void);
+#define REG_ISR_MAIN *(fnptr*)(0x03007FFC)
 
 // ================================= SPRITES ==================================
+
+// Sprite Indexes
+#define PLAYER_SPRITE_INDEX 12
+#define MOTHERSHIP_SPRITE_INDEX 11
 
 // Sprite Attribute Struct
 typedef struct {
@@ -143,9 +187,18 @@ typedef struct {
     unsigned short fill;
 } OBJ_ATTR;
 
+// Affine Sprite Attribute
+typedef struct OBJ_AFFINE {
+	u16 fill0[3];	s16 pa;
+	u16 fill1[3];	s16 pb;
+	u16 fill2[3];	s16 pc;
+	u16 fill3[3];	s16 pd;
+} ALIGN4 OBJ_AFFINE;
+
 // Object Attribute Memory
 #define OAM ((OBJ_ATTR*)(0x7000000))
 extern OBJ_ATTR shadowOAM[];
+extern u8 sprite_count;
 
 // Attribute 0
 #define ATTR0_REGULAR      (0<<8)  // Normal Rendering
@@ -169,6 +222,7 @@ extern OBJ_ATTR shadowOAM[];
 #define ATTR1_SMALL  (1<<14)       // --------------------------------------------
 #define ATTR1_MEDIUM (2<<14)
 #define ATTR1_LARGE  (3<<14)
+#define ATTR1_AFF_ID(num)      ((num)<<9)
 
 // Attribute 2
 #define ATTR2_TILEID(col, row) ((row)*32+(col))
@@ -177,6 +231,14 @@ extern OBJ_ATTR shadowOAM[];
 
 // Sprite Functions
 void hideSprites();
+void obj_aff_rotate(OBJ_AFFINE *oaff, u16 alpha);
+void obj_aff_identity(OBJ_AFFINE *oaff);
+void write_sprite_data(char count);
+void set_sprite_location(char sprite_index, short x, short y);
+void hide_all_sprites();
+void hide_sprite(char sprite_index);
+void show_all_sprites();
+void show_sprite(u8 sprite_index);
 
 // Sprite Constants
 #define ROWMASK 0xFF

@@ -603,6 +603,321 @@ hideSprites:
 .L99:
 	.word	shadowOAM
 	.size	hideSprites, .-hideSprites
+	.align	2
+	.global	lu_sin
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	lu_sin, %function
+lu_sin:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L102
+	ldr	r2, .L102+4
+	lsr	r0, r0, #6
+	and	r3, r3, r0
+	ldrsh	r0, [r2, r3]
+	bx	lr
+.L103:
+	.align	2
+.L102:
+	.word	1022
+	.word	sin_lut
+	.size	lu_sin, .-lu_sin
+	.align	2
+	.global	lu_cos
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	lu_cos, %function
+lu_cos:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	lsr	r0, r0, #7
+	add	r0, r0, #128
+	lsl	r0, r0, #23
+	ldr	r3, .L105
+	lsr	r0, r0, #23
+	lsl	r0, r0, #1
+	ldrsh	r0, [r3, r0]
+	bx	lr
+.L106:
+	.align	2
+.L105:
+	.word	sin_lut
+	.size	lu_cos, .-lu_cos
+	.align	2
+	.global	obj_aff_rotate
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	obj_aff_rotate, %function
+obj_aff_rotate:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	lsr	r1, r1, #7
+	add	r3, r1, #128
+	ldr	ip, .L108
+	lsl	r3, r3, #23
+	lsl	r1, r1, #1
+	lsr	r3, r3, #23
+	ldrsh	r2, [ip, r1]
+	lsl	r3, r3, #1
+	ldrsh	r1, [ip, r3]
+	asr	r3, r2, #4
+	asr	r2, r1, #4
+	rsb	r1, r3, #0
+	strh	r2, [r0, #6]	@ movhi
+	strh	r2, [r0, #30]	@ movhi
+	strh	r3, [r0, #22]	@ movhi
+	strh	r1, [r0, #14]	@ movhi
+	bx	lr
+.L109:
+	.align	2
+.L108:
+	.word	sin_lut
+	.size	obj_aff_rotate, .-obj_aff_rotate
+	.align	2
+	.global	obj_aff_identity
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	obj_aff_identity, %function
+obj_aff_identity:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	r2, #256
+	mov	r3, #0
+	strh	r2, [r0, #6]	@ movhi
+	strh	r2, [r0, #30]	@ movhi
+	strh	r3, [r0, #14]	@ movhi
+	strh	r3, [r0, #22]	@ movhi
+	bx	lr
+	.size	obj_aff_identity, .-obj_aff_identity
+	.align	2
+	.global	overwrite_BG_tile
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	overwrite_BG_tile, %function
+overwrite_BG_tile:
+	@ Function supports interworking.
+	@ args = 4, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	push	{r4, lr}
+	mov	r4, #0
+	ldr	ip, [sp, #8]
+	ldr	lr, .L113
+	lsl	r0, r0, #6
+	add	r0, r0, #100663296
+	lsl	r1, r1, #5
+	ldr	lr, [lr, #4]
+	add	r0, r0, #65536
+	add	r1, r1, #100663296
+	lsl	ip, ip, #1
+	add	r0, r0, r2, lsl #2
+	add	r1, r1, r3, lsl #2
+	orr	ip, ip, #-2147483648
+	str	r4, [lr, #44]
+	str	r0, [lr, #36]
+	str	r1, [lr, #40]
+	str	ip, [lr, #44]
+	pop	{r4, lr}
+	bx	lr
+.L114:
+	.align	2
+.L113:
+	.word	.LANCHOR0
+	.size	overwrite_BG_tile, .-overwrite_BG_tile
+	.align	2
+	.global	write_sprite_data
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	write_sprite_data, %function
+write_sprite_data:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	mov	ip, #0
+	mov	r2, #117440512
+	ldr	r3, .L116
+	ldr	r1, .L116+4
+	ldr	r3, [r3, #4]
+	lsl	r0, r0, #2
+	orr	r0, r0, #-2147483648
+	str	ip, [r3, #44]
+	str	r1, [r3, #36]
+	str	r2, [r3, #40]
+	str	r0, [r3, #44]
+	bx	lr
+.L117:
+	.align	2
+.L116:
+	.word	.LANCHOR0
+	.word	shadowOAM
+	.size	write_sprite_data, .-write_sprite_data
+	.align	2
+	.global	set_sprite_location
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	set_sprite_location, %function
+set_sprite_location:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	cmp	r0, #12
+	str	lr, [sp, #-4]!
+	bne	.L119
+	sub	r1, r1, #8
+	sub	r2, r2, #8
+	lsl	r1, r1, #16
+	lsl	r2, r2, #16
+	asr	r1, r1, #16
+	asr	r2, r2, #16
+.L119:
+	ldr	lr, .L121
+	add	ip, lr, r0, lsl #3
+	ldrh	r3, [ip, #2]
+	lsl	r1, r1, #23
+	lsr	r1, r1, #23
+	and	r3, r3, #65024
+	orr	r1, r3, r1
+	strb	r2, [lr, r0, lsl #3]
+	strh	r1, [ip, #2]	@ movhi
+	ldr	lr, [sp], #4
+	bx	lr
+.L122:
+	.align	2
+.L121:
+	.word	shadowOAM
+	.size	set_sprite_location, .-set_sprite_location
+	.align	2
+	.global	hide_all_sprites
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	hide_all_sprites, %function
+hide_all_sprites:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r2, .L127
+	add	r1, r2, #1024
+.L124:
+	ldrh	r3, [r2]
+	bic	r3, r3, #768
+	orr	r3, r3, #512
+	strh	r3, [r2], #8	@ movhi
+	cmp	r2, r1
+	bne	.L124
+	bx	lr
+.L128:
+	.align	2
+.L127:
+	.word	shadowOAM
+	.size	hide_all_sprites, .-hide_all_sprites
+	.align	2
+	.global	hide_sprite
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	hide_sprite, %function
+hide_sprite:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r2, .L130
+	lsl	r0, r0, #3
+	ldrh	r3, [r2, r0]
+	bic	r3, r3, #768
+	orr	r3, r3, #512
+	strh	r3, [r2, r0]	@ movhi
+	bx	lr
+.L131:
+	.align	2
+.L130:
+	.word	shadowOAM
+	.size	hide_sprite, .-hide_sprite
+	.align	2
+	.global	show_all_sprites
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	show_all_sprites, %function
+show_all_sprites:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r3, .L140
+	ldrb	r0, [r3]	@ zero_extendqisi2
+	cmp	r0, #0
+	bxeq	lr
+	ldr	r3, .L140+4
+	ldrh	r2, [r3]
+	bic	r2, r2, #768
+	strh	r2, [r3]	@ movhi
+	mov	ip, r3
+	mov	r1, r3
+	mov	r2, #0
+.L137:
+	add	r2, r2, #1
+	and	r2, r2, #255
+	cmp	r2, r0
+	bxeq	lr
+	ldrh	r3, [r1, #8]
+	cmp	r2, #12
+	bic	r3, r3, #768
+	strh	r3, [r1, #8]	@ movhi
+	orreq	r3, r3, #768
+	strheq	r3, [ip, #96]	@ movhi
+	add	r1, r1, #8
+	b	.L137
+.L141:
+	.align	2
+.L140:
+	.word	.LANCHOR1
+	.word	shadowOAM
+	.size	show_all_sprites, .-show_all_sprites
+	.align	2
+	.global	show_sprite
+	.syntax unified
+	.arm
+	.fpu softvfp
+	.type	show_sprite, %function
+show_sprite:
+	@ Function supports interworking.
+	@ args = 0, pretend = 0, frame = 0
+	@ frame_needed = 0, uses_anonymous_args = 0
+	@ link register save eliminated.
+	ldr	r2, .L144
+	lsl	r1, r0, #3
+	ldrh	r3, [r2, r1]
+	cmp	r0, #12
+	bic	r3, r3, #768
+	strh	r3, [r2, r1]	@ movhi
+	orreq	r3, r3, #768
+	strheq	r3, [r2, #96]	@ movhi
+	bx	lr
+.L145:
+	.align	2
+.L144:
+	.word	shadowOAM
+	.size	show_sprite, .-show_sprite
+	.global	sprite_count
 	.comm	shadowOAM,1024,4
 	.global	dma
 	.global	videoBuffer
@@ -617,4 +932,10 @@ videoBuffer:
 	.size	dma, 4
 dma:
 	.word	67109040
+	.bss
+	.set	.LANCHOR1,. + 0
+	.type	sprite_count, %object
+	.size	sprite_count, 1
+sprite_count:
+	.space	1
 	.ident	"GCC: (devkitARM release 53) 9.1.0"
