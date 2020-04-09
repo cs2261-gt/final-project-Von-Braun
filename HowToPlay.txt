@@ -1,0 +1,20 @@
+***This will eventually go in the instructions state***
+
+If on win/lose screen:
+    press A to go back to the splash screen
+
+If on game screen:
+    A = goto win
+    B = goto lose
+    D-pad left/right = rotate ship
+    D-pad up/down = fly the direction you're facing
+
+Objective:
+
+* Fly left and right along the surface of the planet and land on four different stations.
+* You can only land on the station with the letter on your compass(top left of UI), which will also tell you the direction of the station you want(left/right/down).
+* When landed on a station, the resource bar for said station will go up and you will earn points.
+* Then fly just bellow the mothership(that other ship scrolling right accross the screen), and it will autodock with you.
+* Once it has collected the resources, it will release your ship, and your compass will tell you where to go next.
+* If the 900s timer(bottom right of UI) reaches zero, you lose
+* If you deliver all four resources, you win

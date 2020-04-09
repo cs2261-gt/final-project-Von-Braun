@@ -5,17 +5,29 @@
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
+typedef char s8;
+typedef short s16;
+typedef int s32;
+typedef volatile u8  vu8;
+typedef volatile u16 vu16;
+typedef volatile u32 vu32;
+typedef volatile s8  vs8;
+typedef volatile s16 vs16;
+typedef volatile s32 vs32;
 
 // Common Macros
 #define OFFSET(col,row,rowlen) ((row)*(rowlen)+(col))
+#define ALIGN4		__attribute__((aligned(4)))
 
 // ================================= DISPLAY ==================================
 
 // Display Control Register
 #define REG_DISPCTL (*(unsigned short *)0x4000000)
 #define MODE0 0
+#define MODE1 1
 #define MODE3 3
 #define MODE4 4
+#define DCNT_BLANK      (1<<7)
 #define DISP_BACKBUFFER (1<<4)
 #define BG0_ENABLE      (1<<8)
 #define BG1_ENABLE      (1<<9)
@@ -25,6 +37,14 @@ typedef unsigned int u32;
 #define SPRITE_MODE_2D  (0<<6)
 #define SPRITE_MODE_1D  (1<<6)
 
+
+typedef u16 Tile[32];
+typedef Tile TileBlock[256];
+#define MEM_TILE	((TileBlock*)0x6000000)
+typedef u8 Tile8x8[32];
+typedef Tile8x8 TileBlock8x8[512];
+typedef u16 BG_tile[16];
+
 // Background Control Registers
 #define REG_BG0CNT (*(volatile unsigned short*)0x4000008)
 #define REG_BG1CNT (*(volatile unsigned short*)0x400000A)
@@ -33,12 +53,30 @@ typedef unsigned int u32;
 
 #define BG_CHARBLOCK(num)   ((num)<<2)
 #define BG_SCREENBLOCK(num) ((num)<<8)
+#define BG_PRIORITY(num)    (num)
 #define BG_4BPP             (0<<7)
 #define BG_8BPP             (1<<7)
 #define BG_SIZE_SMALL       (0<<14)  // 32x32 tiles
 #define BG_SIZE_WIDE        (1<<14)  // 64x32 tiles
 #define BG_SIZE_TALL        (2<<14)  // 32x64 tiles
 #define BG_SIZE_LARGE       (3<<14)  // 64x64 tiles
+
+typedef struct BG_AFFINE {
+    s16 pa, pb;
+    s16 pc, pd;
+    s32 dx, dy
+} ALIGN4 BG_AFFINE;
+
+//! BG affine params array
+#define REG_BG_AFFINE       ((BG_AFFINE*)(0x04000000+0x0000))
+#define BG_WRAP		    	0x2000	//!< Wrap around edges of affine bgs
+#define BG_AFF_32x32	    0x4000	 // affine bg, 32x32 (256x256 px)
+#define REG_BG2PA			*(vs16*)(0x04000000+0x0020)	//!< Bg2 matrix.pa
+#define REG_BG2PB			*(vs16*)(0x04000000+0x0022)	//!< Bg2 matrix.pb
+#define REG_BG2PC			*(vs16*)(0x04000000+0x0024)	//!< Bg2 matrix.pc
+#define REG_BG2PD			*(vs16*)(0x04000000+0x0026)	//!< Bg2 matrix.pd
+#define REG_BG2X			*(vs32*)(0x04000000+0x0028)	//!< Bg2 x scroll
+#define REG_BG2Y			*(vs32*)(0x04000000+0x002C)	//!< Bg2 y scroll
 
 // Background Offset Registers
 #define REG_BG0HOFF (*(volatile unsigned short *)0x04000010)
@@ -55,6 +93,16 @@ typedef unsigned int u32;
 
 // Display Status Registers
 #define SCANLINECOUNTER (*(volatile unsigned short *)0x4000006)
+#define REG_IE              (*(volatile unsigned short *)0x4000200)
+#define REG_IF              (*(volatile unsigned short *)0x4000202)
+#define REG_IME             (*(volatile unsigned short *)0x4000208)
+#define REG_DISPSTAT		(*(volatile unsigned short *)0x4000004)	//!< Display status
+#define REG_VCOUNT			(*(volatile unsigned short *)0x4000006)	//!< Scanline count
+#define DSTAT_HBL_IRQ	0x0010
+#define DSTAT_VCT_IRQ	0x0020
+#define IRQ_VBLANK		0x0001	//!< Catch VBlank irq
+#define IRQ_HBLANK		0x0002	//!< Catch HBlank irq
+#define IRQ_VCOUNT		0x0004	//!< Catch VCount irq
 
 // Display Constants
 #define SCREENHEIGHT 160
@@ -109,9 +157,27 @@ void drawFullscreenImage4(const unsigned short *image);
 // Miscellaneous Drawing Functions
 void waitForVBlank();
 void flipPage();
+void overwrite_BG_tile(u32 spritesheet_index, u32 BG0_index, u32 sprite_start_line, u32 BG0_start_line, u32 lines_to_copy);
 
+// ================================== PLAYER SHIP ==============================================================
+typedef struct OBJ_SHIP {
+    char height;
+    short horizontal_speed;
+    short vertical_speed;
+    short heading;
+    char docking_type; //0 = none, 1 = station, 2 = motheship
+} OBJ_SHIP;
+
+// ================================= INTERUPTS ==================================
+// Define fnptr as a pointer to a function returning void, which takes no arguments
+typedef void (*fnptr)(void);
+#define REG_ISR_MAIN *(fnptr*)(0x03007FFC)
 
 // ================================= SPRITES ==================================
+
+// Sprite Indexes
+#define PLAYER_SPRITE_INDEX 12
+#define MOTHERSHIP_SPRITE_INDEX 11
 
 // Sprite Attribute Struct
 typedef struct {
@@ -121,9 +187,18 @@ typedef struct {
     unsigned short fill;
 } OBJ_ATTR;
 
+// Affine Sprite Attribute
+typedef struct OBJ_AFFINE {
+	u16 fill0[3];	s16 pa;
+	u16 fill1[3];	s16 pb;
+	u16 fill2[3];	s16 pc;
+	u16 fill3[3];	s16 pd;
+} ALIGN4 OBJ_AFFINE;
+
 // Object Attribute Memory
 #define OAM ((OBJ_ATTR*)(0x7000000))
 extern OBJ_ATTR shadowOAM[];
+extern u8 sprite_count;
 
 // Attribute 0
 #define ATTR0_REGULAR      (0<<8)  // Normal Rendering
@@ -147,6 +222,7 @@ extern OBJ_ATTR shadowOAM[];
 #define ATTR1_SMALL  (1<<14)       // --------------------------------------------
 #define ATTR1_MEDIUM (2<<14)
 #define ATTR1_LARGE  (3<<14)
+#define ATTR1_AFF_ID(num)      ((num)<<9)
 
 // Attribute 2
 #define ATTR2_TILEID(col, row) ((row)*32+(col))
@@ -155,6 +231,14 @@ extern OBJ_ATTR shadowOAM[];
 
 // Sprite Functions
 void hideSprites();
+void obj_aff_rotate(OBJ_AFFINE *oaff, u16 alpha);
+void obj_aff_identity(OBJ_AFFINE *oaff);
+void write_sprite_data(char count);
+void set_sprite_location(char sprite_index, short x, short y);
+void hide_all_sprites();
+void hide_sprite(char sprite_index);
+void show_all_sprites();
+void show_sprite(u8 sprite_index);
 
 // Sprite Constants
 #define ROWMASK 0xFF
@@ -250,110 +334,12 @@ extern DMA *dma;
 // DMA Functions
 void DMANow(int channel, volatile const void *src, volatile void *dst, unsigned int cnt);
 
-// =================================== TIMERS ====================================
-
-// CONTROLLERS
-#define REG_TM0CNT *(volatile unsigned short*)0x4000102
-#define REG_TM1CNT *(volatile unsigned short*)0x4000106
-#define REG_TM2CNT *(volatile unsigned short*)0x400010A
-#define REG_TM3CNT *(volatile unsigned short*)0x400010E
-
-// TIMER VALUES
-#define REG_TM0D       *(volatile unsigned short*)0x4000100
-#define REG_TM1D       *(volatile unsigned short*)0x4000104
-#define REG_TM2D       *(volatile unsigned short*)0x4000108
-#define REG_TM3D       *(volatile unsigned short*)0x400010C
-
-// Timer flags
-#define TIMER_ON      (1<<7)
-#define TIMER_OFF     (0<<7)
-#define TM_IRQ        (1<<6)
-#define TM_CASCADE    (1<<2)
-#define TM_FREQ_1     0
-#define TM_FREQ_64    1
-#define TM_FREQ_256   2
-#define TM_FREQ_1024  3
-
-// Time factors to multiply clock ticks to convert to microsec (usec)
-// The next line (uncommented) should be in myLib.c
-// double timefactors[] = {0.059604, 3.811, 15.259, 59.382};
-// extern double timefactors[];
-
-// =================================== INTERRUPTS ====================================
-
-// CONTROLLER
-#define REG_IME *(unsigned short*)0x4000208
-// ENABLER
-#define REG_IE *(unsigned short*)0x4000200
-// FLAG
-#define REG_IF *(volatile unsigned short*)0x4000202
-
-//
-#define REG_INTERRUPT *(unsigned int*)0x3007FFC
-// DISPLAY STATUS
-#define REG_DISPSTAT *(unsigned short*)0x4000004
-
-//interrupt constants for turning them on
-#define INT_VBLANK_ENABLE 1 << 3
-
-//interrupt constants for checking which type of interrupt happened
-#define INT_VBLANK 1 << 0
-#define INT_TM1 1<<4
-#define INT_BUTTON 1 << 12
-
-// =================================== SOUND ====================================
-
-#define REG_SOUNDCNT_X *(volatile u16 *)0x04000084
-
-#define PROCESSOR_CYCLES_PER_SECOND (16777216)
-#define VBLANK_FREQ (59.727)
-
-// register definitions
-#define REG_SOUNDCNT_L        *(u16*)0x04000080
-#define REG_SOUNDCNT_H        *(volatile u16*)0x04000082
-
-// flags
-#define SND_ENABLED           (1<<7)
-#define SND_OUTPUT_RATIO_25   0
-#define SND_OUTPUT_RATIO_50   (1<<0)
-#define SND_OUTPUT_RATIO_100  (1<<1)
-#define DSA_OUTPUT_RATIO_50   (0<<2)
-#define DSA_OUTPUT_RATIO_100  (1<<2)
-#define DSA_OUTPUT_TO_RIGHT   (1<<8)
-#define DSA_OUTPUT_TO_LEFT    (1<<9)
-#define DSA_OUTPUT_TO_BOTH    (3<<8)
-#define DSA_TIMER0            (0<<10)
-#define DSA_TIMER1            (1<<10)
-#define DSA_FIFO_RESET        (1<<11)
-#define DSB_OUTPUT_RATIO_50   (0<<3)
-#define DSB_OUTPUT_RATIO_100  (1<<3)
-#define DSB_OUTPUT_TO_RIGHT   (1<<12)
-#define DSB_OUTPUT_TO_LEFT    (1<<13)
-#define DSB_OUTPUT_TO_BOTH    (3<<12)
-#define DSB_TIMER0            (0<<14)
-#define DSB_TIMER1            (1<<14)
-#define DSB_FIFO_RESET        (1<<15)
-
-// FIFO address defines
-#define REG_FIFO_A          (u16*)0x040000A0
-#define REG_FIFO_B          (u16*)0x040000A4
-
-
-typedef struct{
-    const unsigned char* data;
-    int length;
-    int frequency;
-    int isPlaying;
-    int loops;
-    int duration;
-    int priority;
-    int vBlankCount;
-} SOUND;
-
 // ============================== MISCELLANEOUS ===============================
 
 // Miscellaneous Functions
 int collision(int colA, int rowA, int widthA, int heightA, int colB, int rowB, int widthB, int heightB);
 
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
 #endif

@@ -6,7 +6,7 @@ unsigned short *videoBuffer = (unsigned short *)0x6000000;
 // The start of DMA registers
 DMA *dma = (DMA *)0x40000B0;
 
-// The shadowOAM
+// Define shadowOAM
 OBJ_ATTR shadowOAM[128];
 
 // Set a pixel on the screen in Mode 3
@@ -143,5 +143,72 @@ int collision(int colA, int rowA, int widthA, int heightA, int colB, int rowB, i
 void hideSprites() {
     for (int i = 0; i < 128; i++) {
         shadowOAM[i].attr0 = ATTR0_HIDE;
+    }
+}
+
+// ====================================== AFFINE ====================================================================
+extern s16 sin_lut[514];	// .12f
+
+s32 lu_sin(u32 theta){	return sin_lut[(theta>>7)&0x1FF];	}
+s32 lu_cos(u32 theta){	return sin_lut[((theta>>7)+128)&0x1FF];	}
+
+void obj_aff_rotate(OBJ_AFFINE *oaff, u16 alpha) {
+	int ss= lu_sin(alpha)>>4, cc= lu_cos(alpha)>>4;
+	oaff->pa= cc;	oaff->pb= -ss;
+	oaff->pc= ss;	oaff->pd= cc;
+}
+void obj_aff_identity(OBJ_AFFINE *oaff) {
+	oaff->pa= 0x0100l;	oaff->pb= 0;
+	oaff->pc= 0;		oaff->pd= 0x0100;
+}
+
+// ====================================== BACKGROUND =====================================
+void overwrite_BG_tile(u32 spritesheet_index, u32 BG0_index, u32 sprite_start_line, u32 BG0_start_line, u32 lines_to_copy) {
+    u32 BG0_tile_address =  ((BG_tile*)&SCREENBLOCK[0]) + BG0_index;
+    BG0_tile_address = ((u32*)BG0_tile_address) + BG0_start_line;
+    u32 sprite_address = &MEM_TILE[4][spritesheet_index];
+    sprite_address = ((u32*)sprite_address) + sprite_start_line;
+    DMANow(3, (void*)sprite_address, (void*)BG0_tile_address, lines_to_copy*2);
+}
+
+//=========================================== SPRITES ===============================================================
+
+u8 sprite_count = 0;
+
+void write_sprite_data(char count) {
+    DMANow(3, shadowOAM, OAM, count*4);
+}
+void set_sprite_location(char sprite_index, short x, short y) {
+    if (sprite_index == PLAYER_SPRITE_INDEX) {
+        x-=8;
+        y-=8;
+    }
+    x &= 0x1FF; //9 bits
+    y &= 0xFF; //8 bits
+    shadowOAM[sprite_index].attr0 &= ~0xFF;
+    shadowOAM[sprite_index].attr0 |= y;
+    shadowOAM[sprite_index].attr1 &= ~0x1FF;
+    shadowOAM[sprite_index].attr1 |= x;
+}
+void hide_all_sprites() {
+    for (int i = 0; i < 128; i++) {
+        hide_sprite(i);
+    }
+}
+void hide_sprite(char sprite_index) {
+    shadowOAM[sprite_index].attr0 &= ~0x300;
+    shadowOAM[sprite_index].attr0 |= ATTR0_HIDE;
+}
+void show_all_sprites() {
+    for (u8 i = 0; i < sprite_count; i++) {
+        show_sprite(i);
+    }
+}
+void show_sprite(u8 sprite_index) {
+    shadowOAM[sprite_index].attr0 &= ~0x300;
+    if (sprite_index == PLAYER_SPRITE_INDEX) {
+        shadowOAM[sprite_index].attr0 |= ATTR0_DOUBLEAFFINE;
+    } else {
+        shadowOAM[sprite_index].attr0 |= 0x000;
     }
 }
